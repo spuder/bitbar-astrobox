@@ -51,6 +51,39 @@ function gettool {
   tool=$(curl -s -X GET -H "${HEADER}" "${ASTROBOX_ENDPOINT}/api/printer/tool")
   return 0
 }
+function getfiles {
+  files=$(curl -s -X GET -H "${HEADER}" "${ASTROBOX_ENDPOINT}/api/files")
+  filenames=$(echo "$files" | $JQ -r '.files | sort_by(.date)| reverse | .[].name')
+  return 0
+}
+
+function filesubmenu {
+  local filename=$1
+  local onefile
+  local filesize
+  local filedate
+
+  # shellcheck disable=SC2016
+  onefile=$(echo "$files" |$JQ  --arg filename "$filename" '.files | map(select(.name == $filename ))' )
+
+  # filesize=$(echo "$onefile" |$JQ .[0].size)
+  # filesize=$(displaybytes "$filesize")
+
+  filedate=$(echo "$onefile" |$JQ .[0].date)
+  filedate=$(date -r "$filedate" +"%Y-%m-%d %H:%M:%S" )
+
+  print submenu
+  echo "$filename"
+
+  # if [ "$state" != "Printing" ]; then
+  echo "--start print | color=green bash=$0 param1=printcmd param2=$filename refresh=true terminal=$DEBUG"
+  # fi
+  echo "--uploaded: $filedate"
+  echo "--size: $filesize"
+  echo "--delete | color=red bash=$0 param1=deletecmd param2=$filename refresh=true terminal=$DEBUG "
+  return 0
+}
+
 
 getastrobox
 
@@ -59,19 +92,32 @@ if [[ -z $astrobox_available ]]; then
   echo "No astrobox"
 else
   getprinter
+  getbed
+  bedtarget=$(echo "$bed" | $JQ .bed.target -r)
+  bedactual=$(echo "$bed" | $JQ .bed.actual -r)
+  gettool
+  tooltarget=$(echo "$tool" | $JQ .tool0.target -r)
+  toolactual=$(echo "$tool" | $JQ .tool0.actual -r)
   if [[ $(echo "$printer" | $JQ .state.flags.ready -r) = true ]]; then
     echo "Ready | color=green"
+    echo "---"
+    echo "hotend:$toolactual/$tooltarget °C  bed:$bedactual/$bedtarget °C"
+    count=0
+    until [ $count -gt 2 ]
+    do
+      filesubmenu ${filenames[$count]}
+      count=$(( $count + 1 ))
+    done
+    # file
+    # for f in $filenames; do
+    #   filesubmenu "$f"
+    # done
   elif [[ $(echo "$printer" | $JQ .state.flags.heatingUp -r) = true ]]; then
-    getbed
-    bedtarget=$(echo "$bed" | $JQ .bed.target -r)
-    bedactual=$(echo "$bed" | $JQ .bed.actual -r)
-    gettool
-    tooltarget=$(echo "$tool" | $JQ .tool0.target -r)
-    toolactual=$(echo "$tool" | $JQ .tool0.actual -r)
     echo "Heating | color=orange"
-    echo "hotend:$toolactual/$tooltarget°C  bed:$bedactual/$bedtarget°C | color=black"
+    echo "hotend:$toolactual/$tooltarget °C  bed:$bedactual/$bedtarget °C"
   elif [[ $(echo "$printer" | $JQ .state.flags.printing -r) = true ]]; then
     echo "Printing | color=red"
+    echo "hotend:$toolactual/$tooltarget °C  bed:$bedactual/$bedtarget °C"
   else
     echo "No printer | color=white"
   fi
