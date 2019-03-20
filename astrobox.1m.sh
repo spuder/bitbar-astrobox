@@ -25,7 +25,7 @@ if [[ ! -e $JQ ]]; then
   exit 1
 fi
 
-DEBUG=false
+DEBUG=true #TODO: change to false
 HEADER="X-Api-Key:$ASTROBOX_APIKEY"
 
 # Request
@@ -54,6 +54,7 @@ function gettool {
 function getfiles {
   files=$(curl -s -X GET -H "${HEADER}" "${ASTROBOX_ENDPOINT}/api/files")
   filenames=$(echo "$files" | $JQ -r '.files | sort_by(.date)| reverse | .[].name')
+  unset IFS
   return 0
 }
 
@@ -72,7 +73,7 @@ function filesubmenu {
   filedate=$(echo "$onefile" |$JQ .[0].date)
   filedate=$(date -r "$filedate" +"%Y-%m-%d %H:%M:%S" )
 
-  print submenu
+  # print submenu
   echo "$filename"
 
   # if [ "$state" != "Printing" ]; then
@@ -102,16 +103,21 @@ else
     echo "Ready | color=green"
     echo "---"
     echo "hotend:$toolactual/$tooltarget °C  bed:$bedactual/$bedtarget °C"
-    count=0
-    until [ $count -gt 2 ]
-    do
-      filesubmenu ${filenames[$count]}
-      count=$(( $count + 1 ))
-    done
-    # file
-    # for f in $filenames; do
-    #   filesubmenu "$f"
+    echo "---"
+    getfiles
+    echo ${filenames[0]}
+    # filesubmenu ${filenames[0]}
+    # echo ${filenames[1]}
+    # filesubmenu ${filenames[1]}
+    # filesubmenu ${filenames[2]}
+
+    # count=0
+    # until [ $count -gt 2 ]
+    # do
+    #   filesubmenu ${filenames[$count]}
+    #   count=$(( $count + 1 ))
     # done
+
   elif [[ $(echo "$printer" | $JQ .state.flags.heatingUp -r) = true ]]; then
     echo "Heating | color=orange"
     echo "hotend:$toolactual/$tooltarget °C  bed:$bedactual/$bedtarget °C"
