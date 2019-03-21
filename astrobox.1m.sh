@@ -53,8 +53,7 @@ function gettool {
 }
 function getfiles {
   files=$(curl -s -X GET -H "${HEADER}" "${ASTROBOX_ENDPOINT}/api/files")
-  filenames=$(echo "$files" | $JQ -r '.files | sort_by(.date)| reverse | .[].name')
-  unset IFS
+  filenames=($(echo "$files" | $JQ -r '.files | sort_by(.date)| reverse | .[].name'))
   return 0
 }
 
@@ -105,18 +104,12 @@ else
     echo "hotend:$toolactual/$tooltarget °C  bed:$bedactual/$bedtarget °C"
     echo "---"
     getfiles
-    echo ${filenames[0]}
-    # filesubmenu ${filenames[0]}
-    # echo ${filenames[1]}
-    # filesubmenu ${filenames[1]}
-    # filesubmenu ${filenames[2]}
-
-    # count=0
-    # until [ $count -gt 2 ]
-    # do
-    #   filesubmenu ${filenames[$count]}
-    #   count=$(( $count + 1 ))
-    # done
+    count=0
+    until [ $count -gt 2 ]
+    do
+      filesubmenu ${filenames[$count]}
+      count=$(( $count + 1 ))
+    done
 
   elif [[ $(echo "$printer" | $JQ .state.flags.heatingUp -r) = true ]]; then
     echo "Heating | color=orange"
