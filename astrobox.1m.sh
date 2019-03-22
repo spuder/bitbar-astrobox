@@ -25,7 +25,7 @@ if [[ ! -e $JQ ]]; then
   exit 1
 fi
 
-DEBUG=true #TODO: change to false
+DEBUG=false #TODO: change to false
 HEADER="X-Api-Key:$ASTROBOX_APIKEY"
 
 # Request
@@ -56,7 +56,15 @@ function getfiles {
   filenames=($(echo "$files" | $JQ -r '.files | sort_by(.date)| reverse | .[].name'))
   return 0
 }
-
+function printcmd {
+  curl -s -H $HEADER -H Accept:application/json -H Content-type:application/json -X POST -d '{"command":"select","print":true}' "$ASTROBOX_ENDPOINT/api/files/local/$1"
+}
+# function printstopcmd {
+#   # curl -s -H $HEADER -H Accept:application/json -H Content-type:application/json -X POST -d '{"command":"cancel"}' $ASTROBOX_ENDPOINT/api/job
+# }
+# function deletecmd {
+#   # curl -s -H $HEADER  -X DELETE  "$ASTROBOX_ENDPOINT/api/files/local/$1"
+# }
 function filesubmenu {
   local filename=$1
   local onefile
@@ -79,11 +87,10 @@ function filesubmenu {
   echo "--start print | color=green bash=$0 param1=printcmd param2=$filename refresh=true terminal=$DEBUG"
   # fi
   echo "--uploaded: $filedate"
-  echo "--size: $filesize"
+  # echo "--size: $filesize"
   echo "--delete | color=red bash=$0 param1=deletecmd param2=$filename refresh=true terminal=$DEBUG "
   return 0
 }
-
 
 getastrobox
 
@@ -110,7 +117,8 @@ else
       filesubmenu ${filenames[$count]}
       count=$(( $count + 1 ))
     done
-
+    echo "---"
+    echo "$ASTROBOX_ENDPOINT | href=${ASTROBOX_ENDPOINT}"
   elif [[ $(echo "$printer" | $JQ .state.flags.heatingUp -r) = true ]]; then
     echo "Heating | color=orange"
     echo "hotend:$toolactual/$tooltarget °C  bed:$bedactual/$bedtarget °C"
